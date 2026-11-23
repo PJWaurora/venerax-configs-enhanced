@@ -3,17 +3,17 @@
     "name": "拷贝漫画",
     "fileName": "copy_manga.js",
     "key": "copy_manga",
-    "version": "1.6.1",
-    "description": "保留登录态，区分210限频与账号风控，新增 api.copy202601.com 动态备用线路容灾",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/copy_manga.js"
+    "version": "1.6.2",
+    "description": "全接口多节点自动容灾与存活节点缓存，更新网页搜索接口并支持 API 故障时自动回退网页搜索，保留登录态与 210 限频/风控区分",
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/copy_manga.js"
   },
   {
     "name": "Komiic",
     "fileName": "komiic.js",
     "key": "Komiic",
-    "version": "1.1.7",
-    "description": "台版高清正版扫图：默认启用大陆免代理专线komiic.cc，支持跨域Token与WebView登录页面识别",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@v1.1.7/komiic.js"
+    "version": "1.1.8",
+    "description": "台版高清正版扫图：默认大陆线路 komiic.cc，新增章节图片 X-Image-Ticket 过期主动刷新与 401/403 自动重签重试，修复 Cookie 大小写重复头与域名切换",
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/komiic.js"
   },
   {
     "name": "MangaDex",
@@ -21,7 +21,7 @@
     "key": "manga_dex",
     "version": "1.2.1",
     "description": "国际多语言日漫主力源：官方 API、中文/日文语言筛选与章节聚合",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manga_dex.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manga_dex.js"
   },
   {
     "name": "再漫画",
@@ -29,7 +29,7 @@
     "key": "zaimanhua",
     "version": "1.0.3",
     "description": "中文综合源：搜索与分类、章节状态校验、收藏空列表处理",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/zaimanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/zaimanhua.js"
   },
   {
     "name": "包子漫画",
@@ -37,7 +37,7 @@
     "key": "baozi",
     "version": "1.1.9",
     "description": "连载国漫/汉化秒更免登录：修复章节正文图片解析，扩充活跃CDN节点",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/baozi.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/baozi.js"
   },
   {
     "name": "漫画人",
@@ -45,7 +45,7 @@
     "key": "manhuaren",
     "version": "2.0.1",
     "description": "漫画人移动站：重建搜索、分类榜单、章节与 packer 图片解析",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manhuaren.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manhuaren.js"
   },
   {
     "name": "爱看漫",
@@ -60,7 +60,7 @@
     "key": "ManHuaGui",
     "version": "2.0.0",
     "description": "漫画柜：搜索、分类与分组章节，内置 LZString/packer 解码；图片 CDN 受网络出口影响",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manhuagui.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manhuagui.js"
   },
   {
     "name": "禁漫天堂",
@@ -75,7 +75,7 @@
     "key": "picacg",
     "version": "1.0.9",
     "description": "需登录使用：专题接口、搜索分类筛选、401 重登录与评论签名修正；登录后正文尚未验证",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/picacg.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/picacg.js"
   },
   {
     "name": "E-Hentai",
@@ -83,7 +83,7 @@
     "key": "ehentai",
     "version": "1.2.5",
     "description": "国际顶级同人画廊：修复非标准 DOM 空列表崩溃与 taglist 解析，注入防封请求头",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/ehentai.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/ehentai.js"
   },
   {
     "name": "nhentai",
@@ -112,7 +112,7 @@
     "key": "shonen_jump_plus",
     "version": "1.1.4",
     "description": "集英社官方少年Jump+连载生肉漫画：iTunes 动态版本同步与详情/章节并发加速",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/shonen_jump_plus.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/shonen_jump_plus.js"
   },
   {
     "name": "カドコミ",
@@ -134,7 +134,7 @@
     "key": "manga51",
     "version": "1.1.0",
     "description": "中文漫画综合源：搜索、地区/题材/进度分类，章节 AES 解密与 WebP 图片",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manga51.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manga51.js"
   },
   {
     "name": "如漫画",
@@ -142,7 +142,7 @@
     "key": "rumanhua",
     "version": "1.1.0",
     "description": "中文漫画源：更新/分类入口与章节 AES 解密；搜索尚未实现",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/rumanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/rumanhua.js"
   },
   {
     "name": "漫客栈",
@@ -150,7 +150,7 @@
     "key": "mkzhan",
     "version": "1.0.1",
     "description": "中文漫画：搜索、热门、章节 API 与图片；已验证公开免费章节",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/mkzhan.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/mkzhan.js"
   },
   {
     "name": "动漫啦",
@@ -158,7 +158,7 @@
     "key": "dongmanla",
     "version": "1.0.2",
     "description": "动漫啦：搜索/分类/章节/图片；v1.0.1 适配站点 Tailwind 改版(通用 detail 锚点兜底)",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/dongmanla.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/dongmanla.js"
   },
   {
     "name": "Mangabz",
@@ -166,7 +166,7 @@
     "key": "mangabz",
     "version": "1.0.0",
     "description": "中文漫画：列表、搜索与 chapterimage.ashx 图片解包",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/mangabz.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/mangabz.js"
   },
   {
     "name": "看漫画",
@@ -174,7 +174,7 @@
     "key": "kanman",
     "version": "1.0.0",
     "description": "中文漫画：列表、章节 API 与图片；搜索仅过滤排行榜条目",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/kanman.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/kanman.js"
   },
   {
     "name": "百合会",
@@ -182,7 +182,7 @@
     "key": "baihehui",
     "version": "1.0.1",
     "description": "公开漫画帖子可匿名阅读；搜索需登录，登录功能尚未验证",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/baihehui.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/baihehui.js"
   },
   {
     "name": "comick",
@@ -190,7 +190,7 @@
     "key": "comick",
     "version": "1.2.2",
     "description": "多语言漫画：搜索、探索、章节与正文图片；单字符搜索受限",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/comick.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/comick.js"
   },
   {
     "name": "H-Comic",
@@ -198,7 +198,7 @@
     "key": "hcomic",
     "version": "1.0.0",
     "description": "画廊漫画：搜索、探索、详情与章节图片",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/hcomic.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/hcomic.js"
   },
   {
     "name": "热辣漫画",
@@ -206,7 +206,7 @@
     "key": "hot_manga",
     "version": "1.0.1",
     "description": "漫画 API：搜索、分类、详情与图片；已验证匿名公开阅读",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/hot_manga.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/hot_manga.js"
   },
   {
     "name": "漫蛙漫画",
@@ -214,7 +214,7 @@
     "key": "manwaba",
     "version": "2.0.5",
     "description": "漫画列表、搜索、详情与 AES 章节图片解密",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manwaba.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manwaba.js"
   },
   {
     "name": "漫小肆",
@@ -222,7 +222,7 @@
     "key": "mxs",
     "version": "1.0.2",
     "description": "中文漫画：多域名选择、搜索、章节与图片；已验证公开阅读",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/mxs.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/mxs.js"
   },
   {
     "name": "X漫画",
@@ -230,7 +230,7 @@
     "key": "xmanhua",
     "version": "1.0.0",
     "description": "中文漫画：列表、搜索与 ashx 章节图片解包",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/xmanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/xmanhua.js"
   },
   {
     "name": "思思漫画",
@@ -238,7 +238,7 @@
     "key": "sisimanhua",
     "version": "1.0.0",
     "description": "中文漫画：搜索、章节与 base64 图片解析；探索分页待复核",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/sisimanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/sisimanhua.js"
   },
   {
     "name": "布卡漫画",
@@ -246,7 +246,7 @@
     "key": "bukamh",
     "version": "1.0.0",
     "description": "中文漫画：搜索、AES 章节与图片响应解密；探索分页待复核",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/bukamh.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/bukamh.js"
   },
   {
     "name": "嬉皮漫画",
@@ -254,7 +254,7 @@
     "key": "hipmh",
     "version": "1.0.1",
     "description": "中文漫画：独立 API、搜索、章节图片解密与陷阱图过滤",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/hipmh.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/hipmh.js"
   },
   {
     "name": "W漫画",
@@ -262,7 +262,7 @@
     "key": "wmanhua",
     "version": "1.0.5",
     "description": "公开搜索、详情与正文图片通过；v1.0.4 适配站点改版(卡片封面/搜索 a.book 结构)",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/wmanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/wmanhua.js"
   },
   {
     "name": "神奇漫画",
@@ -270,7 +270,7 @@
     "key": "shenqimanhua",
     "version": "1.1.1",
     "description": "中文漫画：搜索、探索、详情与正文图片",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/shenqimanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/shenqimanhua.js"
   },
   {
     "name": "漫本",
@@ -278,7 +278,7 @@
     "key": "manben",
     "version": "1.0.1",
     "description": "dm5 族：阅读页壳化改版适配，chapterfun.ashx packer 两段解包；v1.0.1 修复搜索页锚点解析",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manben.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manben.js"
   },
   {
     "name": "漫画看",
@@ -286,7 +286,7 @@
     "key": "mhkan",
     "version": "1.0.1",
     "description": "阅读页跳转 reader.hqread.cc 跟随与签名 WebP 图域；详情页 DOM 条目差异兜底",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/mhkan.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/mhkan.js"
   },
   {
     "name": "热门漫画",
@@ -294,7 +294,7 @@
     "key": "remenmanhua",
     "version": "1.0.0",
     "description": "首页列表 + 章节隐藏域 API；图域 static.998876.xyz；站内搜索不稳",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/remenmanhua.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/remenmanhua.js"
   },
   {
     "name": "漫画皮",
@@ -302,7 +302,7 @@
     "key": "manhuapi",
     "version": "1.0.0",
     "description": "jhc-data 图片属性 + 菜单页完整目录；搜索空结果自动回退列表",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/manhuapi.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/manhuapi.js"
   },
   {
     "name": "动漫屋",
@@ -310,7 +310,7 @@
     "key": "dm5",
     "version": "1.0.0",
     "description": "dm5 主站：阅读页内嵌 packer 解包 newImgs",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/dm5.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/dm5.js"
   },
   {
     "name": "极速漫画",
@@ -318,7 +318,7 @@
     "key": "jisu",
     "version": "1.0.0",
     "description": "1kkk：DM5_VIEWSIGN 签名 chapterfun.ashx 单次整章",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/jisu.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/jisu.js"
   },
   {
     "name": "知音漫客",
@@ -326,7 +326,7 @@
     "key": "zymk",
     "version": "1.0.0",
     "description": "正版国漫：排序列表浏览，mhpic 整章图片公式；关键词搜索接口失效",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/zymk.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/zymk.js"
   },
   {
     "name": "Rawkuma",
@@ -334,7 +334,7 @@
     "key": "rawkuma",
     "version": "1.0.0",
     "description": "日文 RAW：WP REST 列表 + admin-ajax 章节 + cdn 直链图",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/rawkuma.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/rawkuma.js"
   },
   {
     "name": "JComic",
@@ -342,7 +342,7 @@
     "key": "jcomic",
     "version": "1.0.0",
     "description": "单本画廊：data-locked 反转 base64 解码，S3 预签名即时下载",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/jcomic.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/jcomic.js"
   },
   {
     "name": "GoDa漫画",
@@ -350,7 +350,7 @@
     "key": "goda",
     "version": "1.2.1",
     "description": "API 域开放：章节图片混淆解码（J7r/kD/W4s/nQ + 7 字符块反转）；主站搜索需 WebView 过 CF",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/goda.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/goda.js"
   },
   {
     "name": "优酷漫画",
@@ -358,7 +358,7 @@
     "key": "ykmh",
     "version": "1.0.0",
     "description": "chapterImages 直链图；短时高频可能触发 IP 403，内置低频使用",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/ykmh.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/ykmh.js"
   },
   {
     "name": "次元漫画",
@@ -366,7 +366,7 @@
     "key": "cycomic",
     "version": "1.0.0",
     "description": "最近更新/人气榜/实时搜索(无分页)；#img-box 章节直链图，图域 tuer.justpic01pt.com:666 非常规端口偶发拒连",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/cycomic.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/cycomic.js"
   },
   {
     "name": "肉漫屋",
@@ -374,6 +374,6 @@
     "key": "roum27",
     "version": "1.1.1",
     "description": "SSR 改版重写：搜索参数 term（上游 keyword 失效）、章节图签名 URL base64 载荷解码（补齐站点剥离的 padding）、按载荷过滤广告图",
-    "url": "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/roum27.js"
+    "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/roum27.js"
   }
 ]

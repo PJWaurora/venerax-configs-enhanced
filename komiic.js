@@ -29,12 +29,16 @@ class Komiic extends ComicSource {
   // 唯一标识符
   key = "Komiic";
 
-  version = "1.1.7";
+  static TICKET_REFRESH_TTL_MS = 8 * 60 * 1000;
+
+  static TICKET_FORCE_COOLDOWN_MS = 10 * 1000;
+
+  version = "1.1.8";
 
   minAppVersion = "1.0.0";
 
   // 更新链接
-  url = "https://cdn.jsdelivr.net/gh/Souitou-iop/venerax-configs-enhanced@main/komiic.js";
+  url = "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/komiic.js";
 
   // 可选访问域名，默认主站
   get baseUrl() {
@@ -51,7 +55,7 @@ class Komiic extends ComicSource {
     };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
-      headers["Cookie"] = `komiic-access-token=${token}`;
+      headers["cookie"] = `komiic-access-token=${token}`;
     }
     return headers;
   }
@@ -76,17 +80,34 @@ class Komiic extends ComicSource {
     return null;
   }
 
-  // 修复封面域名：将 public.komiic.com 替换为 public.komiic.cc
+  // 根据当前访问域名自动对齐封面域名（komiic.cc <-> komiic.com）
   _fixCoverUrl(url) {
     if (!url || typeof url !== "string") return url;
     try {
-      if (url.includes("public.komiic.com")) {
+      if (this.baseUrl.indexOf("komiic.com") >= 0) {
+        if (url.includes("public.komiic.cc")) {
+          return url.replace("public.komiic.cc", "public.komiic.com");
+        }
+      } else if (url.includes("public.komiic.com")) {
         return url.replace("public.komiic.com", "public.komiic.cc");
       }
       return url;
     } catch {
       return url;
     }
+  }
+
+  _isTransientResetError(err) {
+    const msg = (err == null ? "" : String(err)).toLowerCase();
+    return (
+      msg.indexOf("connection reset") >= 0 ||
+      msg.indexOf("broken pipe") >= 0 ||
+      msg.indexOf("unexpected eof") >= 0 ||
+      msg.indexOf("connection closed") >= 0 ||
+      msg.indexOf("os error 54") >= 0 ||
+      msg.indexOf("os error 104") >= 0 ||
+      msg.indexOf("os error 32") >= 0
+    );
   }
 
   async queryJson(query) {
@@ -101,61 +122,79 @@ class Komiic extends ComicSource {
     }
 
     let lastErr = null;
-    for (let base of domains) {
-      try {
-        let headers = {
-          ...this.headers,
-          Referer: base + "/",
-        };
-        let res = await Network.post(
-          base + "/api/query",
-          headers,
-          query,
-        );
+    for (let i = 0; i < domains.length; i++) {
+      const base = domains[i];
+      const maxAttempts = i === 0 ? 2 : 1;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          let headers = {
+            ...this.headers,
+            Referer: base + "/",
+          };
+          let res = await Network.post(
+            base + "/api/query",
+            headers,
+            query,
+          );
 
-        if (res.status !== 200) {
-          throw `Invalid Status Code ${res.status}`;
-        }
+          if (res.status !== 200) {
+            throw `Invalid Status Code ${res.status}`;
+          }
 
-        let json = JSON.parse(res.body);
+          let json = JSON.parse(res.body);
 
-        if (json.errors != undefined) {
-          const errorInfo = json.errors[0]?.message?.toString() || "";
-          if (
-            errorInfo.indexOf("token is expired") >= 0 ||
-            errorInfo.indexOf("no token") >= 0 ||
-            errorInfo.indexOf("jwt expired") >= 0 ||
-            errorInfo.indexOf("Daily image quota exceeded") >= 0
-          ) {
-            const accountData = this.loadData("account");
-            if (accountData && Array.isArray(accountData) && accountData.length >= 2) {
-              this.deleteData("token");
-              try {
-                await this.account.login(accountData[0], accountData[1]);
-                let retryHeaders = { ...this.headers, Referer: base + "/" };
-                let retryRes = await Network.post(
-                  base + "/api/query",
-                  retryHeaders,
-                  query,
-                );
-                if (retryRes.status === 200) {
-                  let retryJson = JSON.parse(retryRes.body);
-                  if (retryJson.errors == undefined) {
-                    return retryJson;
+          if (json.errors != undefined) {
+            const errorInfo = json.errors[0]?.message?.toString() || "";
+            if (
+              errorInfo.indexOf("token is expired") >= 0 ||
+              errorInfo.indexOf("no token") >= 0 ||
+              errorInfo.indexOf("jwt expired") >= 0 ||
+              errorInfo.indexOf("Daily image quota exceeded") >= 0
+            ) {
+              const accountData = this.loadData("account");
+              if (accountData && Array.isArray(accountData) && accountData.length >= 2) {
+                this.deleteData("token");
+                try {
+                  await this.account.login(accountData[0], accountData[1]);
+                  let retryHeaders = { ...this.headers, Referer: base + "/" };
+                  let retryRes = await Network.post(
+                    base + "/api/query",
+                    retryHeaders,
+                    query,
+                  );
+                  if (retryRes.status === 200) {
+                    let retryJson = JSON.parse(retryRes.body);
+                    if (retryJson.errors == undefined) {
+                      return retryJson;
+                    }
                   }
-                }
-              } catch (e) {}
+                } catch (e) {}
+              }
             }
+            if (errorInfo.indexOf("Daily image quota exceeded") >= 0) {
+              throw {
+                _komiicFatal: true,
+                message:
+                  "Komiic 每日免登录图片配额已用尽（300张），请在漫画源设置中登录账号以获取完整额度。",
+              };
+            }
+            throw {
+              _komiicFatal: true,
+              message: errorInfo || "Komiic GraphQL 请求失败",
+            };
           }
-          if (errorInfo.indexOf("Daily image quota exceeded") >= 0) {
-            throw "Komiic 每日免登录图片配额已用尽（300张），请在漫画源设置中登录账号以获取完整额度。";
-          }
-          throw errorInfo;
-        }
 
-        return json;
-      } catch (err) {
-        lastErr = err;
+          return json;
+        } catch (err) {
+          if (err && err._komiicFatal) {
+            throw err.message;
+          }
+          lastErr = err;
+          if (attempt + 1 < maxAttempts && this._isTransientResetError(err)) {
+            continue;
+          }
+          break;
+        }
       }
     }
     throw lastErr || "Komiic 连接失败";
@@ -256,7 +295,7 @@ class Komiic extends ComicSource {
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
-            "Cookie": `komiic-access-token=${token}`,
+            "cookie": `komiic-access-token=${token}`,
           }, {
             operationName: "accountQuery",
             query: "query accountQuery { account { id email nickname } }",
@@ -599,6 +638,103 @@ class Komiic extends ComicSource {
     },
   };
 
+  _swapKomiicImageHost(url) {
+    if (!url || typeof url !== "string") return url;
+    if (url.indexOf("https://komiic.com/") === 0) {
+      return "https://komiic.cc/" + url.slice("https://komiic.com/".length);
+    }
+    if (url.indexOf("https://komiic.cc/") === 0) {
+      return "https://komiic.com/" + url.slice("https://komiic.cc/".length);
+    }
+    return url;
+  }
+
+  _getImageTicketEntry(url) {
+    if (!this._imageTickets || !url) return null;
+    return (
+      this._imageTickets[url] ||
+      this._imageTickets[this._swapKomiicImageHost(url)] ||
+      null
+    );
+  }
+
+  _buildImageHeaders(url, refererBase) {
+    const entry = this._getImageTicketEntry(url);
+    const ticket = typeof entry === "string" ? entry : entry?.ticket;
+    const token = this.loadData("token");
+    const headers = {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      referer: (refererBase || this.baseUrl) + "/",
+    };
+    if (ticket) {
+      headers["X-Image-Ticket"] = ticket;
+    }
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+      headers["cookie"] = `komiic-access-token=${token}`;
+    }
+    return headers;
+  }
+
+  async _refreshChapterTickets(epId, force = false, bypassCooldown = false) {
+    if (!epId) return [];
+    if (!this._imageTickets) this._imageTickets = {};
+    if (!this._ticketRefreshInFlight) this._ticketRefreshInFlight = {};
+    if (!this._ticketLastRefreshedAt) this._ticketLastRefreshedAt = {};
+    if (!this._chapterTicketsCache) this._chapterTicketsCache = {};
+
+    if (this._ticketRefreshInFlight[epId]) {
+      return this._ticketRefreshInFlight[epId];
+    }
+
+    const now = Date.now();
+    const lastAt = this._ticketLastRefreshedAt[epId] || 0;
+    if (
+      !bypassCooldown &&
+      now - lastAt < Komiic.TICKET_FORCE_COOLDOWN_MS &&
+      this._chapterTicketsCache[epId]
+    ) {
+      return this._chapterTicketsCache[epId];
+    }
+
+    const task = (async () => {
+      const json = await this.queryJson({
+        operationName: "imageTicketsByChapterId",
+        variables: { chapterId: epId },
+        query:
+          "query imageTicketsByChapterId($chapterId: ID!) {\n  imageTicketsByChapterId(chapterId: $chapterId) {\n    url\n    ticket\n    kid\n    width\n    height\n  }\n}",
+      });
+      const tickets = json.data?.imageTicketsByChapterId || [];
+      const fetchedAt = Date.now();
+      for (let t of tickets) {
+        if (t && t.url && t.ticket) {
+          this._imageTickets[t.url] = {
+            ticket: t.ticket,
+            fetchedAt: fetchedAt,
+            chapterId: epId,
+          };
+        }
+      }
+      const cacheKeys = Object.keys(this._chapterTicketsCache);
+      if (cacheKeys.length >= 20 && !this._chapterTicketsCache[epId]) {
+        delete this._chapterTicketsCache[cacheKeys[0]];
+      }
+      this._chapterTicketsCache[epId] = tickets;
+      this._ticketLastRefreshedAt[epId] = fetchedAt;
+      return tickets;
+    })();
+
+    this._ticketRefreshInFlight[epId] = task;
+    try {
+      return await task;
+    } finally {
+      if (this._ticketRefreshInFlight[epId] === task) {
+        delete this._ticketRefreshInFlight[epId];
+      }
+    }
+  }
+
   /// 单个漫画相关
   comic = {
     loadInfo: async (id) => {
@@ -608,7 +744,9 @@ class Komiic extends ComicSource {
         query:
           "query recommendComicById($comicId: ID!) {\n  recommendComicById(comicId: $comicId)\n}",
       });
-      let recommend = json1.data.recommendComicById;
+      let recommend = Array.isArray(json1.data?.recommendComicById)
+        ? [...json1.data.recommendComicById]
+        : [];
       recommend.push(id);
 
       let getChapter = async () => {
@@ -665,40 +803,62 @@ class Komiic extends ComicSource {
       };
     },
     loadEp: async (comicId, epId) => {
-      let json = await this.queryJson({
-        operationName: "imageTicketsByChapterId",
-        variables: { chapterId: epId },
-        query:
-          "query imageTicketsByChapterId($chapterId: ID!) {\n  imageTicketsByChapterId(chapterId: $chapterId) {\n    url\n    ticket\n    kid\n    width\n    height\n  }\n}",
-      });
-      let tickets = json.data?.imageTicketsByChapterId || [];
-      if (!this._imageTickets) this._imageTickets = {};
-      for (let t of tickets) {
-        if (t.url && t.ticket) {
-          this._imageTickets[t.url] = t.ticket;
-        }
-      }
+      let tickets = await this._refreshChapterTickets(epId, true, true);
       return {
         images: tickets.map((t) => t.url),
       };
     },
-    onImageLoad: (url, comicId, epId) => {
-      let ticket = this._imageTickets?.[url];
-      let token = this.loadData("token");
-      let headers = {
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        referer: this.baseUrl + "/",
+    onImageLoad: async (url, comicId, epId) => {
+      const entry = this._getImageTicketEntry(url);
+      const isMissing =
+        !entry || (typeof entry === "object" && !entry.ticket);
+      const isStale =
+        typeof entry === "object" &&
+        entry !== null &&
+        (!entry.fetchedAt ||
+          Date.now() - entry.fetchedAt > Komiic.TICKET_REFRESH_TTL_MS);
+      if ((isMissing || isStale) && epId) {
+        try {
+          await this._refreshChapterTickets(epId, false, false);
+        } catch (e) {}
+      }
+
+      let failCount = 0;
+      const createOnLoadFailed = () => {
+        return async () => {
+          failCount++;
+          if (failCount === 1) {
+            if (epId) {
+              try {
+                await this._refreshChapterTickets(epId, true, false);
+              } catch (e) {}
+            }
+            return {
+              url: url,
+              headers: this._buildImageHeaders(url),
+              onLoadFailed: createOnLoadFailed(),
+            };
+          }
+          if (failCount === 2) {
+            const altUrl = this._swapKomiicImageHost(url);
+            if (altUrl !== url) {
+              const altBase =
+                altUrl.indexOf("https://komiic.cc/") === 0
+                  ? "https://komiic.cc"
+                  : "https://komiic.com";
+              return {
+                url: altUrl,
+                headers: this._buildImageHeaders(url, altBase),
+              };
+            }
+          }
+          return null;
+        };
       };
-      if (ticket) {
-        headers["X-Image-Ticket"] = ticket;
-      }
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-        headers["Cookie"] = `komiic-access-token=${token}`;
-      }
+
       return {
-        headers: headers,
+        headers: this._buildImageHeaders(url),
+        onLoadFailed: createOnLoadFailed(),
       };
     },
     loadComments: async (comicId, subId, page, replyTo) => {
