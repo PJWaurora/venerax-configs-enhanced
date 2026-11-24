@@ -33,7 +33,7 @@ class Komiic extends ComicSource {
 
   static TICKET_FORCE_COOLDOWN_MS = 10 * 1000;
 
-  version = "1.1.8";
+  version = "1.1.9";
 
   minAppVersion = "1.0.0";
 
@@ -256,66 +256,148 @@ class Komiic extends ComicSource {
     };
   }
 
-  /// 账号
-  account = {
-    login: async (account, pwd) => {
-      let res = await Network.post(this.baseUrl + "/api/login", {
-        Referer: this.baseUrl + "/",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Content-Type": "application/json",
-      }, {
-        email: account,
-        password: pwd,
-      });
+  _extractJwtFromSetCookie(setCookie) {
+    if (!setCookie) return null;
+    const raw = Array.isArray(setCookie) ? setCookie.join(", ") : String(setCookie);
+    const re = /komiic-access-token=([^;,\s]+)/gi;
+    let bestJwt = null;
+    let fallbackToken = null;
+    let match;
+    while ((match = re.exec(raw)) !== null) {
+      let val = (match[1] || "").trim();
+      if (!val || val.length <= 20) continue;
+      if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(val)) {
+        bestJwt = val;
+      } else {
+        fallbackToken = val;
+      }
+    }
+    return bestJwt || fallbackToken;
+  }
 
-      let token = null;
-      let setCookie = res.headers?.["set-cookie"] || res.headers?.["Set-Cookie"];
-      if (setCookie) {
-        let m = setCookie.match(/komiic-access-token=([^;,\s]+)/);
-        if (m && m[1] && m[1].length > 20) {
-          token = m[1];
-        }
-      }
-      if (!token && res.body) {
-        try {
-          let json = JSON.parse(res.body);
-          token = json.token || json.data?.token || json.accessToken;
-        } catch (e) {}
-      }
-      if (!token) {
-        token = await this._loadWebToken();
-      }
+  _loginDomains() {
+    let domains = [];
+    for (let d of [this.baseUrl, "https://komiic.com", "https://komiic.cc"]) {
+      if (d && !domains.includes(d)) domains.push(d);
+    }
+    return domains;
+  }
 
-      if (token) {
-        try {
-          let checkRes = await Network.post(this.baseUrl + "/api/query", {
-            Referer: this.baseUrl + "/",
+  async _verifyToken(token) {
+    if (!token || typeof token !== "string") return false;
+    for (let domain of this._loginDomains()) {
+      try {
+        let checkRes = await Network.post(
+          domain + "/api/query",
+          {
+            Referer: domain + "/",
             "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-            "cookie": `komiic-access-token=${token}`,
-          }, {
+            Authorization: `Bearer ${token}`,
+            cookie: `komiic-access-token=${token}`,
+          },
+          {
             operationName: "accountQuery",
             query: "query accountQuery { account { id email nickname } }",
-          });
-          if (checkRes.status === 200) {
-            let checkJson = JSON.parse(checkRes.body);
-            if (checkJson.data?.account?.id && checkJson.data.account.id !== "0") {
-              this.saveData("token", token);
-              this.saveData("account", [account, pwd]);
-              return "ok";
-            }
+          },
+        );
+        if (checkRes.status === 200 && checkRes.body) {
+          let checkJson = JSON.parse(checkRes.body);
+          if (checkJson.data?.account?.id && checkJson.data.account.id !== "0") {
+            return true;
           }
-        } catch (e) {
-          this.saveData("token", token);
-          this.saveData("account", [account, pwd]);
-          return "ok";
         }
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  /// 账号
+  account = {
+    login: async (account, pwd) => {
+      const email = String(account || "").trim();
+      const errors = [];
+
+      for (let domain of this._loginDomains()) {
+        let res;
+        try {
+          res = await Network.post(
+            domain + "/api/login",
+            {
+              Referer: domain + "/",
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "Content-Type": "application/json",
+            },
+            {
+              email: email,
+              password: pwd,
+            },
+          );
+        } catch (e) {
+          errors.push(`${domain}: ${e}`);
+          continue;
+        }
+
+        let token = null;
+        let setCookie = res.headers?.["set-cookie"] || res.headers?.["Set-Cookie"];
+        token = this._extractJwtFromSetCookie(setCookie);
+        if (!token && res.body) {
+          try {
+            let json = JSON.parse(res.body);
+            token = json.token || json.data?.token || json.accessToken || null;
+          } catch (e) {}
+        }
+        if (!token && res.status === 200) {
+          token = await this._loadWebToken();
+        }
+
+        if (token) {
+          let verified = false;
+          try {
+            verified = await this._verifyToken(token);
+          } catch (e) {
+            verified = res.status === 200;
+          }
+          if (verified || res.status === 200) {
+            this.saveData("token", token);
+            this.saveData("account", [email, pwd]);
+            return "ok";
+          }
+        }
+
+        let detail = "";
+        if (res.body) {
+          try {
+            let errJson = JSON.parse(res.body);
+            detail = errJson.message || errJson.error || errJson.msg || "";
+          } catch (e) {
+            detail = String(res.body).replace(/\s+/g, " ").trim().slice(0, 120);
+          }
+        }
+        errors.push(`${domain} HTTP ${res.status}${detail ? `: ${detail}` : ""}`);
       }
 
-      throw "账号或密码错误（或该账号未激活），请重新核对后登录；也可使用网页登录。";
+      throw `登录失败（请确认填写的是注册邮箱而非昵称；也可改用网页登录或 Cookie 登录）。详情: ${errors.join(" | ")}`;
+    },
+
+    loginWithCookies: {
+      fields: ["komiic-access-token"],
+      validate: async (values) => {
+        let raw = Array.isArray(values) ? String(values[0] || "").trim() : "";
+        raw = raw
+          .replace(/^komiic-access-token=/i, "")
+          .replace(/^Bearer\s+/i, "")
+          .trim();
+        if (!raw || raw.length <= 20) return false;
+        let ok = await this._verifyToken(raw);
+        if (ok) {
+          this.saveData("token", raw);
+          return true;
+        }
+        return false;
+      },
     },
 
     loginWithWebview: {
