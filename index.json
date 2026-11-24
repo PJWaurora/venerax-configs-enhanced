@@ -11,8 +11,8 @@
     "name": "Komiic",
     "fileName": "komiic.js",
     "key": "Komiic",
-    "version": "1.1.9",
-    "description": "台版高清正版扫图：默认大陆线路 komiic.cc，修复多条 Set-Cookie JWT 提取、登录主站/镜像回退与真实报错透出，新增 Cookie 登录兜底及 X-Image-Ticket 自动刷新",
+    "version": "1.1.10",
+    "description": "台版高清正版扫图：支持 /auth/refresh 自动续期 Token、配额耗尽时自动回退主站并精确区分已登录账号配额与游客/Token失效，修复多条 Set-Cookie 登录与 Cookie 登录兜底",
     "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/komiic.js"
   },
   {

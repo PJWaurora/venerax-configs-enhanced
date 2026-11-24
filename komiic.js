@@ -33,7 +33,7 @@ class Komiic extends ComicSource {
 
   static TICKET_FORCE_COOLDOWN_MS = 10 * 1000;
 
-  version = "1.1.9";
+  version = "1.1.10";
 
   minAppVersion = "1.0.0";
 
@@ -110,8 +110,95 @@ class Komiic extends ComicSource {
     );
   }
 
+  _decodeJwtExp(token) {
+    if (!token || typeof token !== "string") return null;
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) return null;
+      let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4 !== 0) b64 += "=";
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      let bin = "";
+      for (let i = 0; i < b64.length; i += 4) {
+        const a = chars.indexOf(b64[i]);
+        const b = chars.indexOf(b64[i + 1]);
+        const c = b64[i + 2] === "=" ? 0 : chars.indexOf(b64[i + 2]);
+        const d = b64[i + 3] === "=" ? 0 : chars.indexOf(b64[i + 3]);
+        const triple = (a << 18) | (b << 12) | (c << 6) | d;
+        bin += String.fromCharCode((triple >> 16) & 255);
+        if (b64[i + 2] !== "=") bin += String.fromCharCode((triple >> 8) & 255);
+        if (b64[i + 3] !== "=") bin += String.fromCharCode(triple & 255);
+      }
+      const payload = JSON.parse(bin);
+      return typeof payload.exp === "number" ? payload.exp : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async _refreshAccessToken() {
+    for (let domain of this._loginDomains()) {
+      try {
+        let headers = { ...this.headers, Referer: domain + "/" };
+        let res = await Network.post(domain + "/auth/refresh", headers, {});
+        if (res.status === 200) {
+          let setCookie = res.headers?.["set-cookie"] || res.headers?.["Set-Cookie"];
+          let newToken = this._extractJwtFromSetCookie(setCookie);
+          if (!newToken) {
+            newToken = await this._loadWebToken();
+          }
+          if (newToken) {
+            this.saveData("token", newToken);
+            return newToken;
+          }
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async _fetchQuotaDiagnostic(base) {
+    let account = null;
+    let limitInfo = null;
+    const headers = { ...this.headers, Referer: base + "/" };
+    try {
+      const accRes = await Network.post(base + "/api/query", headers, {
+        operationName: "accountQuery",
+        query: "query accountQuery { account { id email nickname } }",
+      });
+      if (accRes.status === 200 && accRes.body) {
+        const accJson = JSON.parse(accRes.body);
+        if (accJson.data?.account?.id && accJson.data.account.id !== "0") {
+          account = accJson.data.account;
+        }
+      }
+    } catch (e) {}
+    try {
+      const limRes = await Network.post(base + "/api/query", headers, {
+        operationName: "getImageLimit",
+        query: "query getImageLimit { getImageLimit { limit usage resetInSeconds } }",
+      });
+      if (limRes.status === 200 && limRes.body) {
+        const limJson = JSON.parse(limRes.body);
+        if (limJson.data?.getImageLimit) {
+          limitInfo = limJson.data.getImageLimit;
+        }
+      }
+    } catch (e) {}
+    return { account, limitInfo };
+  }
+
   async queryJson(query) {
     await this.ensureLogin();
+
+    const currentToken = this.loadData("token");
+    if (currentToken) {
+      const exp = this._decodeJwtExp(currentToken);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (exp && exp < nowSec + 5 * 3600) {
+        await this._refreshAccessToken();
+      }
+    }
 
     let domains = [this.baseUrl];
     if (!domains.includes("https://komiic.cc")) {
@@ -122,6 +209,7 @@ class Komiic extends ComicSource {
     }
 
     let lastErr = null;
+    let quotaHitBase = null;
     for (let i = 0; i < domains.length; i++) {
       const base = domains[i];
       const maxAttempts = i === 0 ? 2 : 1;
@@ -151,6 +239,24 @@ class Komiic extends ComicSource {
               errorInfo.indexOf("jwt expired") >= 0 ||
               errorInfo.indexOf("Daily image quota exceeded") >= 0
             ) {
+              // 1. 先尝试官方 /auth/refresh 刷新 JWT
+              let refreshed = await this._refreshAccessToken();
+              if (refreshed) {
+                try {
+                  let retryRes = await Network.post(
+                    base + "/api/query",
+                    { ...this.headers, Referer: base + "/" },
+                    query,
+                  );
+                  if (retryRes.status === 200) {
+                    let retryJson = JSON.parse(retryRes.body);
+                    if (retryJson.errors == undefined) {
+                      return retryJson;
+                    }
+                  }
+                } catch (e) {}
+              }
+              // 2. 若保存了邮箱密码则尝试重新登录
               const accountData = this.loadData("account");
               if (accountData && Array.isArray(accountData) && accountData.length >= 2) {
                 this.deleteData("token");
@@ -172,11 +278,10 @@ class Komiic extends ComicSource {
               }
             }
             if (errorInfo.indexOf("Daily image quota exceeded") >= 0) {
-              throw {
-                _komiicFatal: true,
-                message:
-                  "Komiic 每日免登录图片配额已用尽（300张），请在漫画源设置中登录账号以获取完整额度。",
-              };
+              quotaHitBase = base;
+              lastErr = errorInfo;
+              // 尝试切换到下一个域名（如从 komiic.cc 镜像切到 komiic.com 主站）
+              break;
             }
             throw {
               _komiicFatal: true,
@@ -196,6 +301,23 @@ class Komiic extends ComicSource {
           break;
         }
       }
+    }
+
+    if (quotaHitBase) {
+      const diag = await this._fetchQuotaDiagnostic(quotaHitBase);
+      const usageText = diag.limitInfo
+        ? `${diag.limitInfo.usage}/${diag.limitInfo.limit}`
+        : "已达上限";
+      const resetSec = Number(diag.limitInfo?.resetInSeconds || 0);
+      const resetText =
+        resetSec > 0
+          ? `，约 ${Math.max(1, Math.ceil(resetSec / 3600))} 小时后重置`
+          : "";
+      if (diag.account) {
+        const who = diag.account.nickname || diag.account.email || diag.account.id;
+        throw `Komiic 账号（${who}）今日图片配额已用尽（${usageText}${resetText}）。Komiic 对普通已登录账号同样存在每日图片上限，需等待配额重置或赞助提升额度。`;
+      }
+      throw `Komiic 当前未处于有效登录态（Token 可能已过期，按游客/代理出口 IP 配额 ${usageText}${resetText}），请在漫画源设置中退出后重新登录，或切换代理节点。`;
     }
     throw lastErr || "Komiic 连接失败";
   }
