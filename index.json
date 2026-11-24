@@ -11,8 +11,8 @@
     "name": "Komiic",
     "fileName": "komiic.js",
     "key": "Komiic",
-    "version": "1.1.10",
-    "description": "台版高清正版扫图：支持 /auth/refresh 自动续期 Token、配额耗尽时自动回退主站并精确区分已登录账号配额与游客/Token失效，修复多条 Set-Cookie 登录与 Cookie 登录兜底",
+    "version": "1.1.11",
+    "description": "台版高清正版扫图：章节列表改用零配额 imagesByChapterId，按页懒加载单张票据并用免费 refreshImageTicket 续期，彻底避免整话重复扣额；支持 /auth/refresh 续期与精确配额提示",
     "url": "https://cdn.jsdelivr.net/gh/PJWaurora/venerax-configs-enhanced@main/komiic.js"
   },
   {

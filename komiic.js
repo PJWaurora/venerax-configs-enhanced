@@ -33,7 +33,7 @@ class Komiic extends ComicSource {
 
   static TICKET_FORCE_COOLDOWN_MS = 10 * 1000;
 
-  version = "1.1.10";
+  version = "1.1.11";
 
   minAppVersion = "1.0.0";
 
@@ -842,6 +842,12 @@ class Komiic extends ComicSource {
     },
   };
 
+  _extractKidFromImageUrl(url) {
+    if (!url || typeof url !== "string") return null;
+    const m = url.match(/^https:\/\/komiic\.(?:com|cc)\/api\/image\/([A-Za-z0-9_-]+)$/);
+    return m ? m[1] : null;
+  }
+
   _swapKomiicImageHost(url) {
     if (!url || typeof url !== "string") return url;
     if (url.indexOf("https://komiic.com/") === 0) {
@@ -853,17 +859,48 @@ class Komiic extends ComicSource {
     return url;
   }
 
-  _getImageTicketEntry(url) {
-    if (!this._imageTickets || !url) return null;
+  _getImageTicketEntry(key) {
+    if (!this._imageTickets || !key) return null;
     return (
-      this._imageTickets[url] ||
-      this._imageTickets[this._swapKomiicImageHost(url)] ||
+      this._imageTickets[key] ||
+      this._imageTickets[this._swapKomiicImageHost(key)] ||
       null
     );
   }
 
-  _buildImageHeaders(url, refererBase) {
-    const entry = this._getImageTicketEntry(url);
+  _isTicketEntryStale(entry) {
+    if (!entry || typeof entry !== "object" || !entry.ticket) return true;
+    if (entry.expiresAt) {
+      const expMs = Date.parse(entry.expiresAt);
+      if (!isNaN(expMs)) {
+        return expMs - Date.now() < 60 * 1000;
+      }
+    }
+    return !entry.fetchedAt || Date.now() - entry.fetchedAt > Komiic.TICKET_REFRESH_TTL_MS;
+  }
+
+  _storeTicketEntry(item, epId) {
+    if (!item || !item.ticket) return null;
+    if (!this._imageTickets) this._imageTickets = {};
+    const entry = {
+      url: item.url,
+      ticket: item.ticket,
+      kid: item.kid,
+      expiresAt: item.expiresAt || null,
+      fetchedAt: Date.now(),
+      chapterId: epId || null,
+    };
+    if (item.kid) {
+      this._imageTickets["kid:" + item.kid] = entry;
+    }
+    if (item.url) {
+      this._imageTickets[item.url] = entry;
+    }
+    return entry;
+  }
+
+  _buildImageHeaders(key, refererBase, explicitEntry) {
+    const entry = explicitEntry || this._getImageTicketEntry(key);
     const ticket = typeof entry === "string" ? entry : entry?.ticket;
     const token = this.loadData("token");
     const headers = {
@@ -879,6 +916,71 @@ class Komiic extends ComicSource {
       headers["cookie"] = `komiic-access-token=${token}`;
     }
     return headers;
+  }
+
+  async _fetchSingleTicket(kid, epId) {
+    if (!kid) return null;
+    if (!this._ticketInFlightByKid) this._ticketInFlightByKid = {};
+    const cacheKey = "kid:" + kid;
+    const existing = this._getImageTicketEntry(cacheKey);
+    if (existing && !this._isTicketEntryStale(existing)) {
+      return existing;
+    }
+    if (this._ticketInFlightByKid[kid]) {
+      return this._ticketInFlightByKid[kid];
+    }
+    const task = (async () => {
+      const json = await this.queryJson({
+        operationName: "getImageTickets",
+        variables: { kids: [kid] },
+        query:
+          "query getImageTickets($kids: [String!]!) {\n  getImageTickets(kids: $kids) {\n    url\n    ticket\n    kid\n    width\n    height\n    expiresAt\n  }\n}",
+      });
+      const list = json.data?.getImageTickets || [];
+      if (list.length > 0) {
+        return this._storeTicketEntry(list[0], epId);
+      }
+      return null;
+    })();
+    this._ticketInFlightByKid[kid] = task;
+    try {
+      return await task;
+    } finally {
+      if (this._ticketInFlightByKid[kid] === task) {
+        delete this._ticketInFlightByKid[kid];
+      }
+    }
+  }
+
+  async _refreshSingleTicket(kid, epId) {
+    if (!kid) return null;
+    if (!this._ticketRefreshByKid) this._ticketRefreshByKid = {};
+    if (this._ticketRefreshByKid[kid]) {
+      return this._ticketRefreshByKid[kid];
+    }
+    const task = (async () => {
+      try {
+        const json = await this.queryJson({
+          operationName: "refreshImageTicket",
+          variables: { kid: kid },
+          query:
+            "mutation refreshImageTicket($kid: String!) {\n  refreshImageTicket(kid: $kid) {\n    url\n    ticket\n    kid\n    width\n    height\n    expiresAt\n  }\n}",
+        });
+        const item = json.data?.refreshImageTicket;
+        if (item && item.ticket && item.url) {
+          return this._storeTicketEntry(item, epId);
+        }
+      } catch (e) {}
+      return await this._fetchSingleTicket(kid, epId);
+    })();
+    this._ticketRefreshByKid[kid] = task;
+    try {
+      return await task;
+    } finally {
+      if (this._ticketRefreshByKid[kid] === task) {
+        delete this._ticketRefreshByKid[kid];
+      }
+    }
   }
 
   async _refreshChapterTickets(epId, force = false, bypassCooldown = false) {
@@ -907,18 +1009,12 @@ class Komiic extends ComicSource {
         operationName: "imageTicketsByChapterId",
         variables: { chapterId: epId },
         query:
-          "query imageTicketsByChapterId($chapterId: ID!) {\n  imageTicketsByChapterId(chapterId: $chapterId) {\n    url\n    ticket\n    kid\n    width\n    height\n  }\n}",
+          "query imageTicketsByChapterId($chapterId: ID!) {\n  imageTicketsByChapterId(chapterId: $chapterId) {\n    url\n    ticket\n    kid\n    width\n    height\n    expiresAt\n  }\n}",
       });
       const tickets = json.data?.imageTicketsByChapterId || [];
       const fetchedAt = Date.now();
       for (let t of tickets) {
-        if (t && t.url && t.ticket) {
-          this._imageTickets[t.url] = {
-            ticket: t.ticket,
-            fetchedAt: fetchedAt,
-            chapterId: epId,
-          };
-        }
+        this._storeTicketEntry(t, epId);
       }
       const cacheKeys = Object.keys(this._chapterTicketsCache);
       if (cacheKeys.length >= 20 && !this._chapterTicketsCache[epId]) {
@@ -1007,23 +1103,82 @@ class Komiic extends ComicSource {
       };
     },
     loadEp: async (comicId, epId) => {
-      let tickets = await this._refreshChapterTickets(epId, true, true);
+      // 仅拉取章节图片 kid 列表（imagesByChapterId 不消耗每日图片配额）；
+      // 真正浏览或下载单张未缓存图片时才在 onImageLoad 中按页申请票据。
+      const json = await this.queryJson({
+        operationName: "imagesByChapterId",
+        variables: { chapterId: epId },
+        query:
+          "query imagesByChapterId($chapterId: ID!) {\n  imagesByChapterId(chapterId: $chapterId) {\n    id\n    kid\n    width\n    height\n  }\n}",
+      });
+      const images = json.data?.imagesByChapterId || [];
       return {
-        images: tickets.map((t) => t.url),
+        images: images
+          .filter((img) => img && img.kid)
+          .map((img) => `https://komiic.com/api/image/${img.kid}`),
       };
     },
     onImageLoad: async (url, comicId, epId) => {
+      const kid = this._extractKidFromImageUrl(url);
+      if (kid) {
+        const cacheKey = "kid:" + kid;
+        let entry = this._getImageTicketEntry(cacheKey);
+        if (!entry || !entry.ticket || !entry.url) {
+          entry = await this._fetchSingleTicket(kid, epId);
+        } else if (this._isTicketEntryStale(entry)) {
+          // 续期走免费 mutation refreshImageTicket，不重复扣每日配额
+          entry = await this._refreshSingleTicket(kid, epId);
+        }
+        if (!entry || !entry.url) {
+          throw "获取 Komiic 图片票据失败";
+        }
+
+        let failCount = 0;
+        const createKidOnLoadFailed = (currentEntry) => {
+          return async () => {
+            failCount++;
+            if (failCount === 1) {
+              const refreshed = await this._refreshSingleTicket(kid, epId);
+              const nextEntry = refreshed || currentEntry;
+              return {
+                url: nextEntry.url,
+                headers: this._buildImageHeaders(cacheKey, null, nextEntry),
+                onLoadFailed: createKidOnLoadFailed(nextEntry),
+              };
+            }
+            if (failCount === 2 && currentEntry?.url) {
+              const altUrl = this._swapKomiicImageHost(currentEntry.url);
+              if (altUrl !== currentEntry.url) {
+                const altBase =
+                  altUrl.indexOf("https://komiic.cc/") === 0
+                    ? "https://komiic.cc"
+                    : "https://komiic.com";
+                return {
+                  url: altUrl,
+                  headers: this._buildImageHeaders(cacheKey, altBase, currentEntry),
+                };
+              }
+            }
+            return null;
+          };
+        };
+
+        return {
+          url: entry.url,
+          headers: this._buildImageHeaders(cacheKey, null, entry),
+          onLoadFailed: createKidOnLoadFailed(entry),
+        };
+      }
+
+      // 兼容旧版下载队列中已保存的直链 URL
       const entry = this._getImageTicketEntry(url);
-      const isMissing =
-        !entry || (typeof entry === "object" && !entry.ticket);
-      const isStale =
-        typeof entry === "object" &&
-        entry !== null &&
-        (!entry.fetchedAt ||
-          Date.now() - entry.fetchedAt > Komiic.TICKET_REFRESH_TTL_MS);
-      if ((isMissing || isStale) && epId) {
+      if (this._isTicketEntryStale(entry) && epId) {
         try {
-          await this._refreshChapterTickets(epId, false, false);
+          if (entry && entry.kid) {
+            await this._refreshSingleTicket(entry.kid, epId);
+          } else {
+            await this._refreshChapterTickets(epId, false, false);
+          }
         } catch (e) {}
       }
 
@@ -1032,7 +1187,12 @@ class Komiic extends ComicSource {
         return async () => {
           failCount++;
           if (failCount === 1) {
-            if (epId) {
+            const cur = this._getImageTicketEntry(url);
+            if (cur && cur.kid) {
+              try {
+                await this._refreshSingleTicket(cur.kid, epId);
+              } catch (e) {}
+            } else if (epId) {
               try {
                 await this._refreshChapterTickets(epId, true, false);
               } catch (e) {}
